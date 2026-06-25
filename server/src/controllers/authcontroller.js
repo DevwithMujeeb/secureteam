@@ -102,7 +102,6 @@ const login = async (req, res, next) => {
 
     const user = await User.findOne({ email }).select("+password");
 
-    // Deliberately generic message — don't reveal whether the email exists.
     if (!user) {
       throw new AppError("Invalid email or password", 401);
     }
@@ -195,4 +194,37 @@ const refresh = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refresh };
+/**
+ * POST /api/auth/logout
+ * Clears the refresh token cookie AND increments refreshTokenVersion,
+ * invalidating every refresh token ever issued to this user — not just
+ * the one in this cookie. This means logout actually revokes access
+ * everywhere, rather than just deleting a cookie on one device while
+ * tokens copied elsewhere remain valid until they expire naturally.
+ */
+const logout = async (req, res, next) => {
+  try {
+    const token = req.cookies.refreshToken;
+
+    if (token) {
+      try {
+        const decoded = verifyRefreshToken(token);
+        const user = await User.findById(decoded.sub);
+        if (user) {
+          user.refreshTokenVersion += 1;
+          await user.save();
+        }
+      } catch (err) {
+        // Token already invalid/expired — nothing to invalidate, proceed
+        // to clear the cookie anyway. Logout should never fail loudly.
+      }
+    }
+
+    res.clearCookie("refreshToken", refreshCookieOptions);
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, refresh, logout };
