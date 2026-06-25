@@ -65,7 +65,7 @@ npm run dev
 ## Roadmap
 
 - [x] Project scaffolding (Express + React, security middleware)
-- [ ] User & Organization models
+- [x] User & Organization models
 - [ ] Auth (register/login/refresh) wired into RBAC from the ground up
 - [ ] Role + project-membership authorization middleware
 - [ ] Audit logging layer
