@@ -66,7 +66,7 @@ npm run dev
 
 - [x] Project scaffolding (Express + React, security middleware)
 - [x] User & Organization models
-- [ ] Auth (register/login/refresh) wired into RBAC from the ground up
+- [x] Auth (register/login/refresh) wired into RBAC from the ground up
 - [ ] Role + project-membership authorization middleware
 - [ ] Audit logging layer
 - [ ] Core project/task CRUD with permission enforcement
