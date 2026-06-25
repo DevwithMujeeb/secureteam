@@ -3,7 +3,11 @@ const User = require("../models/User");
 const Organization = require("../models/Organization");
 const Membership = require("../models/Membership");
 const AppError = require("../utils/AppError");
-const { signAccessToken, signRefreshToken } = require("../utils/jwt");
+const {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} = require("../utils/jwt");
 const config = require("../config/env");
 
 // Cookie options shared by anywhere we set the refresh token cookie.
@@ -138,4 +142,57 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+/**
+ * POST /api/auth/refresh
+ * Reads the refresh token from the httpOnly cookie, verifies it, and checks
+ * its embedded tokenVersion against the user's current refreshTokenVersion
+ * in the database. A mismatch means the token was issued before a logout-all
+ * or security event — even a structurally valid, unexpired JWT is rejected.
+ * Issues a fresh access token (and rotates the refresh token) on success.
+ */
+const refresh = async (req, res, next) => {
+  try {
+    const token = req.cookies.refreshToken;
+
+    if (!token) {
+      throw new AppError("No refresh token provided", 401);
+    }
+
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(token);
+    } catch (err) {
+      throw new AppError("Invalid or expired refresh token", 401);
+    }
+
+    const user = await User.findById(decoded.sub);
+
+    if (!user) {
+      throw new AppError("User no longer exists", 401);
+    }
+
+    if (decoded.tokenVersion !== user.refreshTokenVersion) {
+      throw new AppError(
+        "Refresh token has been invalidated. Please log in again.",
+        401,
+      );
+    }
+
+    const newAccessToken = signAccessToken(user._id);
+    const newRefreshToken = signRefreshToken(
+      user._id,
+      user.refreshTokenVersion,
+    );
+
+    res.cookie("refreshToken", newRefreshToken, refreshCookieOptions);
+
+    res.status(200).json({
+      message: "Token refreshed",
+      accessToken: newAccessToken,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, refresh };
