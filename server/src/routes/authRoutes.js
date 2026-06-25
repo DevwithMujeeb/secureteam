@@ -5,11 +5,12 @@ const {
   refresh,
   logout,
 } = require("../controllers/authcontroller");
+const { loginLimiter, registerLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", registerLimiter, register);
+router.post("/login", loginLimiter, login);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 
