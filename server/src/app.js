@@ -1,5 +1,7 @@
 const express = require("express");
 const helmet = require("helmet");
+const authRoutes = require("./routes/authRoutes");
+const errorHandler = require("./middleware/errorHandler");
 const cors = require("cors");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
@@ -34,9 +36,15 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// --- 404 handler (placeholder until routes are mounted) ---
+// --- Routes ---
+app.use("/api/auth", authRoutes);
+
+// --- 404 handler ---
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
+
+// --- Centralized error handler (must be last) ---
+app.use(errorHandler);
 
 module.exports = app;
