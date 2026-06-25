@@ -81,4 +81,61 @@ const register = async (req, res, next) => {
   }
 };
 
-module.exports = { register };
+/**
+ * POST /api/auth/login
+ * Verifies credentials and issues a new token pair. Uses a generic error
+ * message for both "email not found" and "wrong password" to avoid leaking
+ * which one was incorrect (prevents account enumeration). Tracks failed
+ * attempts per-account and temporarily locks after repeated failures.
+ */
+const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      throw new AppError("Email and password are required", 400);
+    }
+
+    const user = await User.findOne({ email }).select("+password");
+
+    // Deliberately generic message — don't reveal whether the email exists.
+    if (!user) {
+      throw new AppError("Invalid email or password", 401);
+    }
+
+    if (user.isLocked()) {
+      throw new AppError(
+        "Account temporarily locked due to too many failed login attempts. Try again later.",
+        423,
+      );
+    }
+
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      await user.incrementFailedAttempts();
+      throw new AppError("Invalid email or password", 401);
+    }
+
+    await user.resetFailedAttempts();
+
+    const accessToken = signAccessToken(user._id);
+    const refreshToken = signRefreshToken(user._id, user.refreshTokenVersion);
+
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions);
+
+    res.status(200).json({
+      message: "Login successful",
+      accessToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login };

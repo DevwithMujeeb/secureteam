@@ -33,6 +33,14 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );
@@ -47,6 +55,30 @@ userSchema.pre("save", async function () {
 // Instance method to compare a plaintext password against the stored hash.
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Returns true if the account is currently locked out due to too many
+// failed login attempts.
+userSchema.methods.isLocked = function () {
+  return this.lockUntil && this.lockUntil > Date.now();
+};
+
+// Increments the failed-attempt counter. After 5 consecutive failures,
+// locks the account for 15 minutes. Resets to 0 on any successful login.
+userSchema.methods.incrementFailedAttempts = async function () {
+  this.failedLoginAttempts += 1;
+
+  if (this.failedLoginAttempts >= 5) {
+    this.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  }
+
+  await this.save();
+};
+
+userSchema.methods.resetFailedAttempts = async function () {
+  this.failedLoginAttempts = 0;
+  this.lockUntil = null;
+  await this.save();
 };
 
 module.exports = mongoose.model("User", userSchema);
