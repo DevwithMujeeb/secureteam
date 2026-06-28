@@ -6,6 +6,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const config = require("./config/env");
+const auditRoutes = require("./routes/auditRoutes");
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.get("/api/health", (req, res) => {
 
 // --- Routes ---
 app.use("/api/auth", authRoutes);
+app.use("/api/organizations/:orgId/audit-logs", auditRoutes);
 
 // --- 404 handler ---
 app.use((req, res) => {
