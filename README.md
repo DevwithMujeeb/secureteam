@@ -68,7 +68,7 @@ npm run dev
 - [x] User & Organization models
 - [x] Auth (register/login/refresh) wired into RBAC from the ground up
 - [x] Role + project-membership authorization middleware
-- [ ] Audit logging layer
+- [x] Audit logging layer
 - [ ] Core project/task CRUD with permission enforcement
 - [ ] React frontend
 - [ ] Security hardening pass + writeup
