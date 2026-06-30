@@ -9,6 +9,7 @@ const authRoutes = require("./routes/authRoutes");
 const auditRoutes = require("./routes/auditRoutes");
 const organizationRoutes = require("./routes/organizationRoutes");
 const projectRoutes = require("./routes/projectRoutes");
+const taskRoutes = require("./routes/taskRoutes");
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/organizations/:orgId/audit-logs", auditRoutes);
 app.use("/api/organizations/:orgId/projects", projectRoutes);
+app.use("/api/organizations/:orgId/projects/:projectId/tasks", taskRoutes);
 
 // --- 404 handler ---
 app.use((req, res) => {
