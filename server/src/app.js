@@ -8,6 +8,7 @@ const config = require("./config/env");
 const authRoutes = require("./routes/authRoutes");
 const auditRoutes = require("./routes/auditRoutes");
 const organizationRoutes = require("./routes/organizationRoutes");
+const projectRoutes = require("./routes/projectRoutes");
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/organizations/:orgId/audit-logs", auditRoutes);
+app.use("/api/organizations/:orgId/projects", projectRoutes);
 
 // --- 404 handler ---
 app.use((req, res) => {
