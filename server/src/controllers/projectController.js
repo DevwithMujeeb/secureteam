@@ -52,13 +52,16 @@ const createProject = async (req, res, next) => {
 
 /**
  * GET /api/organizations/:orgId/projects
- * Lists all active projects in the org. Any org member can view.
+ * Lists all active projects in the org that the current user has access to.
+ * Filters to only projects where the user is a member or creator —
+ * so they can never navigate to a project they'd be blocked from.
  */
 const getProjects = async (req, res, next) => {
   try {
     const projects = await Project.find({
       organization: req.params.orgId,
       status: "active",
+      $or: [{ members: req.user._id }, { createdBy: req.user._id }],
     })
       .populate("createdBy", "name email")
       .sort({ createdAt: -1 });
@@ -214,12 +217,10 @@ const addProjectMember = async (req, res, next) => {
       metadata: { projectId: project._id, projectName: project.name },
     });
 
-    res
-      .status(200)
-      .json({
-        message: "Member added to project",
-        memberCount: project.members.length,
-      });
+    res.status(200).json({
+      message: "Member added to project",
+      memberCount: project.members.length,
+    });
   } catch (err) {
     next(err);
   }
@@ -257,12 +258,10 @@ const removeProjectMember = async (req, res, next) => {
       metadata: { projectId: project._id, projectName: project.name },
     });
 
-    res
-      .status(200)
-      .json({
-        message: "Member removed from project",
-        memberCount: project.members.length,
-      });
+    res.status(200).json({
+      message: "Member removed from project",
+      memberCount: project.members.length,
+    });
   } catch (err) {
     next(err);
   }
