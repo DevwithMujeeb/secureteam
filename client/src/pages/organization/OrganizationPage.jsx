@@ -252,7 +252,7 @@ const OrganizationPage = () => {
 
         {/* Audit log tab */}
         {activeTab === "audit log" && (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {auditLogs.length === 0 ? (
               <Card className="text-center py-12">
                 <p className="text-gray-400 text-sm">
@@ -260,28 +260,96 @@ const OrganizationPage = () => {
                 </p>
               </Card>
             ) : (
-              auditLogs.map((log) => (
-                <Card key={log._id} className="py-3 px-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-green-400 font-mono text-xs bg-green-400/10 px-2 py-1 rounded">
-                        {log.action}
+              auditLogs.map((log) => {
+                const actionColors = {
+                  "member.invited":
+                    "bg-green-400/15 text-green-400 border-green-400/30",
+                  "member.removed":
+                    "bg-red-400/15 text-red-400 border-red-400/30",
+                  "member.role_changed":
+                    "bg-yellow-400/15 text-yellow-400 border-yellow-400/30",
+                  "project.created":
+                    "bg-blue-400/15 text-blue-400 border-blue-400/30",
+                  "project.deleted":
+                    "bg-red-400/15 text-red-400 border-red-400/30",
+                  "project.member_added":
+                    "bg-green-400/15 text-green-400 border-green-400/30",
+                  "project.member_removed":
+                    "bg-red-400/15 text-red-400 border-red-400/30",
+                  "organization.updated":
+                    "bg-purple-400/15 text-purple-400 border-purple-400/30",
+                };
+
+                const actionLabels = {
+                  "member.invited": "+ Invited",
+                  "member.removed": "− Removed",
+                  "member.role_changed": "⟳ Role changed",
+                  "project.created": "+ Project created",
+                  "project.deleted": "− Project deleted",
+                  "project.member_added": "+ Added to project",
+                  "project.member_removed": "− Removed from project",
+                  "organization.updated": "✎ Org updated",
+                };
+
+                const metaDescription = () => {
+                  const m = log.metadata;
+                  if (!m || Object.keys(m).length === 0) return null;
+                  if (log.action === "member.role_changed") {
+                    return `${m.oldRole} → ${m.newRole}`;
+                  }
+                  if (log.action === "member.invited") {
+                    return `${m.email} as ${m.role}`;
+                  }
+                  if (log.action === "organization.updated") {
+                    return `Fields: ${m.updatedFields?.join(", ")}`;
+                  }
+                  if (log.action?.startsWith("project.member_")) {
+                    return m.projectName;
+                  }
+                  if (
+                    log.action === "project.created" ||
+                    log.action === "project.deleted"
+                  ) {
+                    return m.projectName;
+                  }
+                  return null;
+                };
+
+                const colorClass =
+                  actionColors[log.action] ||
+                  "bg-gray-400/15 text-gray-400 border-gray-400/30";
+                const label = actionLabels[log.action] || log.action;
+                const meta = metaDescription();
+
+                return (
+                  <div
+                    key={log._id}
+                    className="flex items-center gap-4 px-5 py-3.5 rounded-xl bg-white/3 border border-white/8 hover:bg-white/5 transition-colors">
+                    {/* Action badge */}
+                    <span
+                      className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${colorClass}`}>
+                      {label}
+                    </span>
+
+                    {/* Actor */}
+                    <span className="text-sm text-white font-medium shrink-0">
+                      {log.actor.name}
+                    </span>
+
+                    {/* Meta description */}
+                    {meta && (
+                      <span className="text-sm text-gray-400 truncate">
+                        — {meta}
                       </span>
-                      <span className="text-sm text-gray-300">
-                        by <span className="text-white">{log.actor.name}</span>
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500">
+                    )}
+
+                    {/* Timestamp — pushed to the right */}
+                    <span className="ml-auto shrink-0 text-xs text-gray-500">
                       {new Date(log.createdAt).toLocaleString()}
                     </span>
                   </div>
-                  {log.metadata && Object.keys(log.metadata).length > 0 && (
-                    <p className="text-xs text-gray-500 mt-1 font-mono">
-                      {JSON.stringify(log.metadata)}
-                    </p>
-                  )}
-                </Card>
-              ))
+                );
+              })
             )}
           </div>
         )}
