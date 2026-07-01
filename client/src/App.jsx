@@ -2,21 +2,10 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ui/ProtectedRoute";
 
-// Auth pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-
-// Real pages
 import Dashboard from "./pages/dashboard/Dashboard";
-
-// Placeholder pages for routes we'll build next
-const OrgPage = () => (
-  <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-    <p className="text-green-400 text-xl font-mono">
-      Organization page — coming next
-    </p>
-  </div>
-);
+import OrganizationPage from "./pages/organization/OrganizationPage";
 
 const ProjectPage = () => (
   <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
@@ -55,7 +44,7 @@ const App = () => {
         path="/organizations/:orgId"
         element={
           <ProtectedRoute>
-            <OrgPage />
+            <OrganizationPage />
           </ProtectedRoute>
         }
       />
