@@ -11,7 +11,7 @@ import Input from "../../components/ui/Input";
 import Spinner from "../../components/ui/Spinner";
 
 const Dashboard = () => {
-  const { user, currentOrg, logout } = useAuth();
+  const { user, currentOrg, logout, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [org, setOrg] = useState(null);
@@ -19,19 +19,24 @@ const Dashboard = () => {
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState("");
 
-  // Create project modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProject, setNewProject] = useState({ name: "", description: "" });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
   useEffect(() => {
-    if (!currentOrg?.id) return;
+    // Wait for AuthContext to finish hydrating before fetching
+    if (authLoading) return;
+    if (!currentOrg?.id) {
+      setLoadingData(false);
+      return;
+    }
     fetchData();
-  }, [currentOrg]);
+  }, [currentOrg, authLoading]);
 
   const fetchData = async () => {
     setLoadingData(true);
+    setError("");
     try {
       const [orgRes, projectsRes] = await Promise.all([
         getOrganization(currentOrg.id),
@@ -67,10 +72,25 @@ const Dashboard = () => {
     navigate("/login");
   };
 
-  if (loadingData) {
+  // Still hydrating auth state — show spinner
+  if (authLoading || loadingData) {
     return (
       <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
         <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // Auth hydrated but no org found
+  if (!currentOrg) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400 mb-4">
+            No organization found for your account.
+          </p>
+          <Button onClick={handleLogout}>Sign out and try again</Button>
+        </div>
       </div>
     );
   }
@@ -112,7 +132,6 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-white">Projects</h1>
@@ -126,7 +145,6 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        {/* Projects grid */}
         {projects.length === 0 ? (
           <Card className="text-center py-16">
             <p className="text-gray-400 text-sm">No projects yet.</p>
@@ -139,7 +157,7 @@ const Dashboard = () => {
             {projects.map((project) => (
               <Card
                 key={project.id}
-                className="cursor-pointer hover:border-green-400/30 hover:bg-white/8 transition-all duration-200"
+                className="cursor-pointer hover:border-green-400/30 transition-all duration-200"
                 onClick={() =>
                   navigate(
                     `/organizations/${currentOrg?.id}/projects/${project.id}`,
@@ -169,7 +187,6 @@ const Dashboard = () => {
         )}
       </main>
 
-      {/* Create project modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}

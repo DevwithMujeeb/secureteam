@@ -19,7 +19,6 @@ const refreshCookieOptions = {
 
 const register = async (req, res, next) => {
   const session = await mongoose.startSession();
-
   try {
     const { name, email, password, organizationName } = req.body;
 
@@ -38,12 +37,10 @@ const register = async (req, res, next) => {
     }
 
     const [user] = await User.create([{ name, email, password }], { session });
-
     const [organization] = await Organization.create(
       [{ name: organizationName, owner: user._id }],
       { session },
     );
-
     await Membership.create(
       [{ user: user._id, organization: organization._id, role: "owner" }],
       { session },
@@ -59,15 +56,8 @@ const register = async (req, res, next) => {
     res.status(201).json({
       message: "Account created successfully",
       accessToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
-      organization: {
-        id: organization._id,
-        name: organization.name,
-      },
+      user: { id: user._id, name: user.name, email: user.email },
+      organization: { id: organization._id, name: organization.name },
     });
   } catch (err) {
     await session.abortTransaction();
@@ -99,7 +89,6 @@ const login = async (req, res, next) => {
     }
 
     const isMatch = await user.comparePassword(password);
-
     if (!isMatch) {
       await user.incrementFailedAttempts();
       throw new AppError("Invalid email or password", 401);
@@ -107,9 +96,6 @@ const login = async (req, res, next) => {
 
     await user.resetFailedAttempts();
 
-    // Fetch the user's primary org membership to return with the login
-    // response — so the client always has the correct org context for
-    // whoever just logged in, not leftover from a previous session.
     const membership = await Membership.findOne({ user: user._id }).populate(
       "organization",
     );
@@ -122,11 +108,7 @@ const login = async (req, res, next) => {
     res.status(200).json({
       message: "Login successful",
       accessToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
+      user: { id: user._id, name: user.name, email: user.email },
       organization: membership
         ? {
             id: membership.organization._id,
@@ -155,10 +137,7 @@ const refresh = async (req, res, next) => {
     }
 
     const user = await User.findById(decoded.sub);
-
-    if (!user) {
-      throw new AppError("User no longer exists", 401);
-    }
+    if (!user) throw new AppError("User no longer exists", 401);
 
     if (decoded.tokenVersion !== user.refreshTokenVersion) {
       throw new AppError(
@@ -175,10 +154,9 @@ const refresh = async (req, res, next) => {
 
     res.cookie("refreshToken", newRefreshToken, refreshCookieOptions);
 
-    res.status(200).json({
-      message: "Token refreshed",
-      accessToken: newAccessToken,
-    });
+    res
+      .status(200)
+      .json({ message: "Token refreshed", accessToken: newAccessToken });
   } catch (err) {
     next(err);
   }
@@ -196,7 +174,7 @@ const logout = async (req, res, next) => {
           user.refreshTokenVersion += 1;
           await user.save();
         }
-      } catch (err) {
+      } catch {
         // Token already invalid — clear cookie anyway
       }
     }
@@ -208,4 +186,34 @@ const logout = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refresh, logout };
+/**
+ * GET /api/auth/me
+ * Returns the current authenticated user and their primary organization.
+ * Called on every app load to verify and hydrate session state without
+ * requiring a full login — prevents stale org context across accounts.
+ */
+const me = async (req, res, next) => {
+  try {
+    const membership = await Membership.findOne({
+      user: req.user._id,
+    }).populate("organization");
+
+    res.status(200).json({
+      user: {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+      },
+      organization: membership
+        ? {
+            id: membership.organization._id,
+            name: membership.organization.name,
+          }
+        : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, refresh, logout, me };

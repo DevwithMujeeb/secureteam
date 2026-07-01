@@ -9,6 +9,7 @@ import {
   login as loginApi,
   register as registerApi,
   logout as logoutApi,
+  getMe,
 } from "../api/auth";
 
 const AuthContext = createContext(null);
@@ -18,19 +19,42 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(() =>
     localStorage.getItem("accessToken"),
   );
-  const [currentOrg, setCurrentOrg] = useState(() => {
-    const stored = localStorage.getItem("currentOrg");
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [loading, setLoading] = useState(false);
+  const [currentOrg, setCurrentOrg] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Restore user from localStorage on page refresh
+  // On every app load, call /api/auth/me to verify the stored token is
+  // still valid and fetch the correct org for whoever is logged in.
+  // This prevents stale org context from a previous session or a different
+  // account — no manual sign out/in needed to fix mismatched state.
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const storedToken = localStorage.getItem("accessToken");
+    if (!storedToken) {
+      setLoading(false);
+      return;
     }
+
+    getMe()
+      .then(({ data }) => {
+        setUser(data.user);
+        setAccessToken(storedToken);
+        setCurrentOrg(data.organization);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        if (data.organization) {
+          localStorage.setItem("currentOrg", JSON.stringify(data.organization));
+        }
+      })
+      .catch(() => {
+        setUser(null);
+        setAccessToken(null);
+        setCurrentOrg(null);
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+        localStorage.removeItem("currentOrg");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const login = useCallback(async (email, password) => {
@@ -40,14 +64,12 @@ export const AuthProvider = ({ children }) => {
       const { data } = await loginApi({ email, password });
       setUser(data.user);
       setAccessToken(data.accessToken);
+      setCurrentOrg(data.organization);
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("user", JSON.stringify(data.user));
-
       if (data.organization) {
-        setCurrentOrg(data.organization);
         localStorage.setItem("currentOrg", JSON.stringify(data.organization));
       }
-
       return data;
     } catch (err) {
       const message = err.response?.data?.message || "Login failed";
@@ -91,7 +113,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await logoutApi();
     } catch {
-      // Logout server-side best-effort — clear client state regardless
+      // Best-effort
     } finally {
       setUser(null);
       setAccessToken(null);
@@ -128,8 +150,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };
