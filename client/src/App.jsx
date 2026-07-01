@@ -6,14 +6,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Dashboard from "./pages/dashboard/Dashboard";
 import OrganizationPage from "./pages/organization/OrganizationPage";
-
-const ProjectPage = () => (
-  <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-    <p className="text-green-400 text-xl font-mono">
-      Project page — coming next
-    </p>
-  </div>
-);
+import ProjectPage from "./pages/project/ProjectPage";
 
 const App = () => {
   const { isAuthenticated } = useAuth();
