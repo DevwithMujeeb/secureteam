@@ -70,7 +70,7 @@ npm run dev
 - [x] Role + project-membership authorization middleware
 - [x] Audit logging layer
 - [x] Core project/task CRUD with permission enforcement
-- [ ] React frontend
+- [x] React frontend
 - [ ] Security hardening pass + writeup
 
 ---
