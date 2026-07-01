@@ -42,6 +42,12 @@ export const AuthProvider = ({ children }) => {
       setAccessToken(data.accessToken);
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("user", JSON.stringify(data.user));
+
+      if (data.organization) {
+        setCurrentOrg(data.organization);
+        localStorage.setItem("currentOrg", JSON.stringify(data.organization));
+      }
+
       return data;
     } catch (err) {
       const message = err.response?.data?.message || "Login failed";

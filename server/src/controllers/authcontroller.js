@@ -10,21 +10,13 @@ const {
 } = require("../utils/jwt");
 const config = require("../config/env");
 
-// Cookie options shared by anywhere we set the refresh token cookie.
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: config.nodeEnv === "production", // only over HTTPS in production
+  secure: config.nodeEnv === "production",
   sameSite: "strict",
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days, matches JWT_REFRESH_EXPIRY default
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
-/**
- * POST /api/auth/register
- * Creates a User, an Organization owned by them, and an 'owner' Membership
- * linking the two — all in a single atomic transaction. This is the moment
- * RBAC structure comes into existence for a new account; it must not be
- * possible for a User to exist without an owning Organization.
- */
 const register = async (req, res, next) => {
   const session = await mongoose.startSession();
 
@@ -85,13 +77,6 @@ const register = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/auth/login
- * Verifies credentials and issues a new token pair. Uses a generic error
- * message for both "email not found" and "wrong password" to avoid leaking
- * which one was incorrect (prevents account enumeration). Tracks failed
- * attempts per-account and temporarily locks after repeated failures.
- */
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -122,6 +107,13 @@ const login = async (req, res, next) => {
 
     await user.resetFailedAttempts();
 
+    // Fetch the user's primary org membership to return with the login
+    // response — so the client always has the correct org context for
+    // whoever just logged in, not leftover from a previous session.
+    const membership = await Membership.findOne({ user: user._id }).populate(
+      "organization",
+    );
+
     const accessToken = signAccessToken(user._id);
     const refreshToken = signRefreshToken(user._id, user.refreshTokenVersion);
 
@@ -135,20 +127,18 @@ const login = async (req, res, next) => {
         name: user.name,
         email: user.email,
       },
+      organization: membership
+        ? {
+            id: membership.organization._id,
+            name: membership.organization.name,
+          }
+        : null,
     });
   } catch (err) {
     next(err);
   }
 };
 
-/**
- * POST /api/auth/refresh
- * Reads the refresh token from the httpOnly cookie, verifies it, and checks
- * its embedded tokenVersion against the user's current refreshTokenVersion
- * in the database. A mismatch means the token was issued before a logout-all
- * or security event — even a structurally valid, unexpired JWT is rejected.
- * Issues a fresh access token (and rotates the refresh token) on success.
- */
 const refresh = async (req, res, next) => {
   try {
     const token = req.cookies.refreshToken;
@@ -194,14 +184,6 @@ const refresh = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/auth/logout
- * Clears the refresh token cookie AND increments refreshTokenVersion,
- * invalidating every refresh token ever issued to this user — not just
- * the one in this cookie. This means logout actually revokes access
- * everywhere, rather than just deleting a cookie on one device while
- * tokens copied elsewhere remain valid until they expire naturally.
- */
 const logout = async (req, res, next) => {
   try {
     const token = req.cookies.refreshToken;
@@ -215,8 +197,7 @@ const logout = async (req, res, next) => {
           await user.save();
         }
       } catch (err) {
-        // Token already invalid/expired — nothing to invalidate, proceed
-        // to clear the cookie anyway. Logout should never fail loudly.
+        // Token already invalid — clear cookie anyway
       }
     }
 

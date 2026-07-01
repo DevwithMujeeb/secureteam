@@ -6,10 +6,23 @@ import ProtectedRoute from "./components/ui/ProtectedRoute";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 
-// Placeholder pages — we'll build these next
-const Dashboard = () => (
+// Real pages
+import Dashboard from "./pages/dashboard/Dashboard";
+
+// Placeholder pages for routes we'll build next
+const OrgPage = () => (
   <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-    <p className="text-green-400 text-xl font-mono">Dashboard — coming next</p>
+    <p className="text-green-400 text-xl font-mono">
+      Organization page — coming next
+    </p>
+  </div>
+);
+
+const ProjectPage = () => (
+  <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+    <p className="text-green-400 text-xl font-mono">
+      Project page — coming next
+    </p>
   </div>
 );
 
@@ -18,7 +31,6 @@ const App = () => {
 
   return (
     <Routes>
-      {/* Public routes */}
       <Route
         path="/login"
         element={
@@ -31,8 +43,6 @@ const App = () => {
           isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />
         }
       />
-
-      {/* Protected routes */}
       <Route
         path="/dashboard"
         element={
@@ -41,8 +51,22 @@ const App = () => {
           </ProtectedRoute>
         }
       />
-
-      {/* Fallback */}
+      <Route
+        path="/organizations/:orgId"
+        element={
+          <ProtectedRoute>
+            <OrgPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizations/:orgId/projects/:projectId"
+        element={
+          <ProtectedRoute>
+            <ProjectPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="*"
         element={
